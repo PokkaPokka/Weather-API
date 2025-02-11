@@ -3,3 +3,4 @@ redis
 types-redis
 uvicorn
 psycopg2-binary
+sqlalchemy-2.0.38

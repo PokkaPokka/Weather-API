@@ -1,11 +1,9 @@
-import os
-import requests
-from dotenv import load_dotenv
 from fastapi import FastAPI
+from .routers import weatherData
 
 app = FastAPI()
-load_dotenv()
-api_key = os.getenv("API_KEY")
+
+app.include_router(weatherData.router)
 
 
 @app.get("/")
