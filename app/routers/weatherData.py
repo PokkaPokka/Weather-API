@@ -1,11 +1,13 @@
+import asyncio
 import logging
 import os
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, requests, status
 from sqlalchemy.orm import Session
 from app import schemas
-from app.utils import fetch_and_save_weather
 from app.database import get_db
+from app.utils import fetch_and_save_weather
+
 
 router = APIRouter(prefix="/weatherData", tags=["weatherData"])
 load_dotenv()
@@ -34,3 +36,14 @@ async def get_weather(
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+def call_get_weather(weather_data: schemas.WeatherDataCreate):
+    try:
+        db: Session = next(get_db())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_weather(weather_data, db))
+        loop.close()
+    except Exception as e:
+        print(f"Error calling weather function: {e}")
