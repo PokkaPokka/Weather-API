@@ -4,7 +4,7 @@ import logging
 import os
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, requests, status
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import *
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
@@ -20,17 +20,32 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def is_retryable_exception(exception):
+    return (
+        isinstance(exception, HTTPException)
+        and getattr(exception, "response", None)
+        and exception.response.status_code != 404
+    )
+
+
 @router.post(
     "/getCityWeather",
     status_code=status.HTTP_201_CREATED,
     response_model=schemas.WeatherDataResponse,
 )
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=8),
+    retry=retry_if_exception(is_retryable_exception),
+)
 async def get_weather(
     weather: schemas.WeatherDataCreate,
     db: Session = Depends(get_db),
 ):
     try:
+        if not weather.city.strip():
+            raise HTTPException(status_code=400, detail="City name is required")
+
         weather_record = await fetch_and_save_weather(weather, api_key, db)
 
         # Clear any weather data older than 3 days.
